@@ -42,6 +42,10 @@ return [
             'driver' => 'session',
             'provider' => 'users',
         ],
+        'api' => [
+            'driver' => 'sanctum', // Ensure this is sanctum
+            'provider' => 'users',
+        ],
     ],
 
     /*
@@ -113,5 +117,7 @@ return [
     */
 
     'password_timeout' => env('AUTH_PASSWORD_TIMEOUT', 10800),
+
+    'frontend_url' => env('FRONTEND_URL', 'http://localhost:3000'),
 
 ];
