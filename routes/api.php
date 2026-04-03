@@ -1,6 +1,10 @@
 <?php
 
 use App\Http\Controllers\Admin\CollectionController;
+use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Admin\PaymentController;
+use App\Http\Controllers\Admin\SettingController;
+use App\Http\Controllers\Admin\StudentController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Auth\AuthController;
 use Illuminate\Http\Request;
@@ -26,14 +30,41 @@ Route::get('/password/verify/{user}', [AuthController::class, 'verifySignature']
 
 // Protected Routes (Require Token)
 Route::middleware(['auth:sanctum'])->group(function () {
+
+    // Auth route outside the admin prefix
     Route::post('/logout', [AuthController::class, 'logout'])->middleware('throttle:10,1');
-    Route::post('/admin/users/add', [UserController::class, 'store']);
-    
-    // Route to fetch all committee members for the accounts list
-    Route::get('/admin/users', [UserController::class, 'index']);
 
-    Route::post('/admin/users/{user}/resend-invite', [UserController::class, 'resendInvite']);
+    // Main Admin Group
+    Route::prefix('admin')->group(function () {
 
-    //Collection routes
-    Route::get('/admin/collections', [CollectionController::class, 'index']);
+        // Dashboard Route
+        Route::get('/dashboard-stats', [DashboardController::class, 'index']);
+
+        // Student Route
+        // GET /api/admin/students (List & Search)
+        Route::get('/students', [StudentController::class, 'index']);
+
+        // GET /api/admin/students/{student_id} (View Profile & History)
+        Route::get('/students/{student_id}', [StudentController::class, 'show']);
+
+        // POST /api/admin/students (Create/Add New Student)
+        Route::post('/students', [StudentController::class, 'store']);
+
+        // Payments Route
+        Route::get('/payments', [PaymentController::class, 'index']);
+        Route::post('/payments', [PaymentController::class, 'store']);
+        Route::get('/payments/today', [CollectionController::class, 'getTodayContributions']);
+
+        // User Management
+        Route::post('/users/add', [UserController::class, 'store']);
+        Route::get('/users', [UserController::class, 'index']);
+        Route::post('/users/{user}/resend-invite', [UserController::class, 'resendInvite']);
+
+        // Collection Routes
+        Route::get('/masterlist', [CollectionController::class, 'index']);
+        Route::get('/students/search/{studentId}', [CollectionController::class, 'show']);
+
+        // Nested Settings Group (Resulting URL: /admin/settings)
+        Route::resource('settings', SettingController::class)->except(['create', 'edit']);
+    });
 });

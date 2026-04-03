@@ -35,4 +35,9 @@ return [
         ],
     ],
 
+    'google' => [
+        'script_url' => env('GOOGLE_SCRIPT_URL'),
+        'deployment_id' => env('GOOGLE_DEPLOYMENT_ID'),
+    ],
+
 ];
