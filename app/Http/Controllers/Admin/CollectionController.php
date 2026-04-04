@@ -23,7 +23,6 @@ class CollectionController extends Controller
                 'students.middle_name',
                 'students.last_name',
                 'students.suffix',
-                'students.course',
                 'students.college',
                 DB::raw('COALESCE(SUM(payments.amount), 0) as total_paid')
             )
@@ -33,7 +32,6 @@ class CollectionController extends Controller
                 'students.middle_name',
                 'students.last_name',
                 'students.suffix',
-                'students.course',
                 'students.college'
             )
             ->get()
@@ -47,7 +45,6 @@ class CollectionController extends Controller
                         $student->last_name,
                         $student->suffix
                     )),
-                    'course'     => $student->course,
                     'college'    => $student->college,
                     'total_paid' => (float) $student->total_paid,
                     'balance'    => $fee - (float) $student->total_paid,

@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Payment;
+use App\Models\Student;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\{DB, Cache, Log};
 
@@ -11,37 +13,48 @@ class DashboardController extends Controller
     // app/Http/Controllers/Admin/DashboardController.php
     public function index()
     {
-        // 1. Get Fee from DB (or default to 4300)
+        // 1. Setup Constants
         $fee = (float) (DB::table('settings')->where('key', 'contribution_fee')->value('value') ?? 4300);
+        $today = now()->timezone('Asia/Manila')->format('Y-m-d');
 
-        // 2. Get Masterlist from Cache
-        $masterlist = Cache::get('senco_masterlist', []);
+        // 2. Global Stats
+        $totalStudents = Student::count();
+        $totalCollected = (float) Payment::sum('amount');
+        $dailyCollection = (float) Payment::whereDate('created_at', $today)->sum('amount');
 
-        // 3. Perform Math on the Array
-        $totalStudents = count($masterlist);
+        // 3. College Breakdown Logic
+        // We use withSum to get the total paid per student, then group by college
+        $studentsWithBalances = Student::query()
+            ->withSum('payments', 'amount')
+            ->get();
 
-        // Summing the 'paid' or 'amount' field from your cache objects
-        $totalCollected = array_sum(array_column($masterlist, 'paid_amount'));
+        //$zeroPayments = $studentsWithBalances->filter(fn($s) => ($s->payments_sum_amount ?? 0) <= 0)->count();
 
-        // Count fully paid (where balance is 0)
-        $paidStudents = count(array_filter($masterlist, function ($student) {
-            return ($student['balance'] ?? 1) <= 0;
-        }));
+        $collegeStats = $studentsWithBalances->groupBy('college')->map(function ($students, $collegeName) use ($fee) {
+            return [
+                'college' => $collegeName,
+                'total_students' => $students->count(),
+                'fully_paid' => $students->filter(fn($s) => ($s->payments_sum_amount ?? 0) >= $fee)->count(),
+                'zero_payments' => $students->filter(fn($s) => ($s->payments_sum_amount ?? 0) <= 0)->count(),
+                'partial_payments' => $students->filter(fn($s) => ($s->payments_sum_amount > 0) && ($s->payments_sum_amount < $fee))->count(),
+            ];
+        })->values();
+
+        // 4. Calculate Global Fully Paid (for the top cards)
+        $totalFullyPaid = $collegeStats->sum('fully_paid');
 
         return response()->json([
             'stats' => [
                 'totalCollected' => $totalCollected,
-                'totalStudents'  => $totalStudents,
-                'paidStudents'   => $paidStudents,
-                'expectedTotal'  => $totalStudents * $fee,
+                'dailyCollection' => $dailyCollection,
+                'totalStudents' => $totalStudents,
+                'fullyPaidStudents' => $totalFullyPaid,
+                'expectedTotal' => $totalStudents * $fee,
+                'zeroPaymentStudents' => $totalStudents - $totalFullyPaid,
             ],
+            'college_breakdown' => $collegeStats,
             'contribution_fee' => $fee,
-            Log::info("Dashboard stats calculated: " . json_encode([
-                'totalCollected' => $totalCollected,
-                'totalStudents'  => $totalStudents,
-                'paidStudents'   => $paidStudents,
-                'expectedTotal'  => $totalStudents * $fee,
-            ]))
+            'date_ref' => $today
         ]);
     }
 }
