@@ -5,13 +5,14 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Payment;
 use App\Models\Student;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\{DB, Cache, Log};
 
 class DashboardController extends Controller
 {
     // app/Http/Controllers/Admin/DashboardController.php
-    public function index()
+    public function index(Request $request)
     {
         // 1. Setup Constants
         $fee = (float) (DB::table('settings')->where('key', 'contribution_fee')->value('value') ?? 4300);
@@ -43,6 +44,18 @@ class DashboardController extends Controller
         // 4. Calculate Global Fully Paid (for the top cards)
         $totalFullyPaid = $collegeStats->sum('fully_paid');
 
+        // 5. Get Collector Statistics
+        $userTransactions = User::has('payments') // Only users who have collected
+            ->withCount('payments')
+            ->get()
+            ->map(function ($user) {
+                return [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'transactions_count' => $user->payments_count
+                ];
+            });
+
         return response()->json([
             'stats' => [
                 'totalCollected' => $totalCollected,
@@ -51,6 +64,7 @@ class DashboardController extends Controller
                 'fullyPaidStudents' => $totalFullyPaid,
                 'expectedTotal' => $totalStudents * $fee,
                 'zeroPaymentStudents' => $totalStudents - $totalFullyPaid,
+                'userTransactions' => $userTransactions, // Add this line
             ],
             'college_breakdown' => $collegeStats,
             'contribution_fee' => $fee,

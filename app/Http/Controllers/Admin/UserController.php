@@ -50,4 +50,29 @@ class UserController extends Controller
 
         return response()->json(['message' => 'Invitation resent successfully.']);
     }
+
+    // Toggle Suspension
+    public function suspend(User $user)
+    {
+        // Guard: ID 1 is protected
+        if ($user->id === 1) {
+            return response()->json(['error' => 'Root admin cannot be suspended'], 403);
+        }
+
+        $user->suspended_at = $user->suspended_at ? null : now();
+        $user->save();
+
+        return response()->json(['success' => true, 'suspended' => !!$user->suspended_at]);
+    }
+
+    // Soft Delete User
+    public function destroy(User $user)
+    {
+        if ($user->id === 1) {
+            return response()->json(['error' => 'Root admin cannot be deleted'], 403);
+        }
+
+        $user->delete(); // This sets deleted_at, doesn't wipe the row
+        return response()->json(['success' => true]);
+    }
 }

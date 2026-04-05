@@ -58,4 +58,11 @@ class Payment extends Model
     {
         return $this->belongsTo(Student::class, 'student_id', 'student_id');
     }
+
+    // app/Models/Payment.php
+    public function collector()
+    {
+        // Points to the User who collected the payment
+        return $this->belongsTo(User::class, 'collected_by');
+    }
 }

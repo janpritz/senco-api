@@ -22,6 +22,12 @@ class AuthController extends Controller
             ], 401);
         }
 
+        if ($user?->suspended_at) {
+            return response()->json([
+                'message' => 'Your account has been suspended. Please contact the Admin.'
+            ], 403); // 403 Forbidden
+        }
+
         Auth::login($user);
         // Create a plain text token for the Next.js app to store
         $token = $user->createToken('admin-token')->plainTextToken;

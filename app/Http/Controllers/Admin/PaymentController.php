@@ -62,6 +62,7 @@ class PaymentController extends Controller
                     'reference_number' => $payment->reference_number ?? 'REF-' . $payment->id,
                     // Send ISO 8601 string so JavaScript can parse it easily
                     'created_at' => $payment->created_at->toIso8601String(),
+                    'collected_by_name' => $payment->collector->name ?? 'System',
                 ];
             });
 

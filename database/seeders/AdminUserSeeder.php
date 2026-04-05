@@ -11,10 +11,10 @@ class AdminUserSeeder extends Seeder
     public function run(): void
     {
         User::updateOrCreate(
-            ['email' => 'admin@senco.edu'], // Check if this email exists
+            ['email' => 'academics.johnfritzcabalhin@gmail.com'], // Check if this email exists
             [
                 'name' => 'Senco Admin',
-                'password' => Hash::make('admin123'), // Encrypts the password
+                'password' => Hash::make('@SENCO2026'), // Encrypts the password
                 'email_verified_at' => now(),
                 'role' => 'Admin',
             ]
