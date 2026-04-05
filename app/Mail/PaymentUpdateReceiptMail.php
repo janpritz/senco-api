@@ -2,7 +2,6 @@
 
 namespace App\Mail;
 
-use App\Models\Payment; // Import your Payment model
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
@@ -10,17 +9,12 @@ use Illuminate\Mail\Mailables\Attachment;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\Log;
+use App\Models\Payment;
+use Illuminate\Support\Carbon; // Import your Payment model
 
-class PaymentReceiptMail extends Mailable
+class PaymentUpdateReceiptMail extends Mailable
 {
     use Queueable, SerializesModels;
-
-    /**
-     * The payment instance.
-     * Making this public allows it to be accessed in your markdown file.
-     */
     public $payment;
 
     /**
@@ -30,12 +24,16 @@ class PaymentReceiptMail extends Mailable
     {
         $this->payment = $payment;
     }
-
+    /**
+     * Get the message envelope.
+     */
     public function envelope(): Envelope
     {
-        $subject = 'Official Payment Receipt - SENCO 2026';
-
-        return new Envelope(subject: $subject);
+        $ref = $this->payment->reference_number;
+        $subject = "AMOUNT UPDATED: Receipt #{$ref} - SENCO 2026";
+        return new Envelope(
+            subject: $subject
+        );
     }
 
     /**
@@ -52,8 +50,7 @@ class PaymentReceiptMail extends Mailable
         $isFullyPaid = $totalPaid >= $goal;
         $status = $isFullyPaid ? '✅ Fully Paid' : '⏳ Partial Contribution';
 
-        // Dynamic Intro with Apology
-        $introMessage = "We have successfully recorded your payment. Your updated transaction details are provided below.";
+        $introMessage = "We sincerely apologize, but there was a minor clerical error in your previous receipt. We have updated your records to ensure your contribution history is accurate. Your updated transaction details are provided below.";
 
         // 3. Prepare the Note Content
         if ($isFullyPaid) {
@@ -89,8 +86,6 @@ class PaymentReceiptMail extends Mailable
      */
     public function attachments(): array
     {
-        // If you ever want to attach a PDF version of the receipt, 
-        // this is where you'd add it.
         return [];
     }
 }

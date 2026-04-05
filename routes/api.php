@@ -8,6 +8,7 @@ use App\Http\Controllers\Admin\StudentController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Auth\AuthController;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/user', function (Request $request) {
@@ -54,6 +55,8 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::get('/payments', [PaymentController::class, 'index']);
         Route::post('/payments', [PaymentController::class, 'store']);
         Route::get('/payments/today', [CollectionController::class, 'getTodayContributions']);
+        Route::patch('/payments/update-amount', [PaymentController::class, 'update']);
+        Route::get('/payments/lookup', [PaymentController::class, 'lookup']);
 
         // User Management
         Route::post('/users/add', [UserController::class, 'store']);

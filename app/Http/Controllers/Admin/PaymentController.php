@@ -7,8 +7,9 @@ use App\Http\Requests\Admin\PaymentStoreRequest;
 use App\Models\Payment;
 use App\Services\Admin\PaymentService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\{Auth, Cache, Log};
+use Illuminate\Support\Facades\{Auth, Cache, DB, Log};
 use App\Jobs\SendPaymentReceiptJob;
+use App\Jobs\SendPaymentUpdateReceiptJob;
 
 class PaymentController extends Controller
 {
@@ -21,7 +22,7 @@ class PaymentController extends Controller
 
     public function store(PaymentStoreRequest $request)
     {
-        $validated = $request->validated();  
+        $validated = $request->validated();
 
         try {
             // The Service Layer handles the SENCO-XX-XXXXXX logic
@@ -65,5 +66,63 @@ class PaymentController extends Controller
             });
 
         return response()->json($payments);
+    }
+
+    public function update(Request $request)
+    {
+        $request->validate([
+            'reference_number' => 'required|string|exists:payments,reference_number',
+            'amount'           => 'required|numeric|min:1',
+        ]);
+
+        return DB::transaction(function () use ($request) {
+            $payment = Payment::where('reference_number', $request->reference_number)->firstOrFail();
+            $studentId = $payment->student_id;
+            $goal = 4000;
+
+            // Calculate what the total WOULD be if we allow this update
+            // (Current Total - Old Amount + New Proposed Amount)
+            $currentTotal = Payment::where('student_id', $studentId)->sum('amount');
+            $projectedTotal = ($currentTotal - $payment->getOriginal('amount')) + $request->amount;
+
+            if ($projectedTotal > $goal) {
+                $maxAllowed = $goal - ($currentTotal - $payment->getOriginal('amount'));
+
+                return response()->json([
+                    'status' => 'error',
+                    'message' => "Update denied. This would bring the student's total to ₱" . number_format($projectedTotal, 2) . ". The maximum amount allowed for this specific transaction is ₱" . number_format($maxAllowed, 2) . "."
+                ], 422); // 422 Unprocessable Content
+            }
+
+            $payment->update(['amount' => $request->amount]);
+
+            // Re-dispatch the receipt so they see they are now "Fully Paid"
+            SendPaymentUpdateReceiptJob::dispatch($payment); // Pass 'true' to indicate this is an update email
+
+            return response()->json(['status' => 'success', 'message' => 'Payment updated.']);
+        });
+    }
+
+    public function lookup(Request $request)
+    {
+        //Reject if request is not admin
+
+        /** @var \App\Models\User $user */
+        $user = Auth::user();
+
+        if (!$user || !$user->isAdmin()) {
+            return response()->json(['message' => 'Unauthorized'], 401);
+        }
+
+        $reference = strtoupper(trim($request->query('ref')));
+
+        $payment = Payment::whereRaw('UPPER(reference_number) = ?', [$reference])->first();
+
+        if (!$payment) return response()->json(['message' => 'Not found'], 404);
+
+        return response()->json([
+            'amount' => $payment->amount,
+            'student' => $payment->student->full_name
+        ]);
     }
 }
